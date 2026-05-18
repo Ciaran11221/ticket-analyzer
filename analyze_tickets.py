@@ -2,6 +2,7 @@ import anthropic
 import pandas as pd
 import json
 import os
+from database import TicketDatabase
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -54,6 +55,9 @@ for col in columns:
     elif 'message' in col_lower or 'description' in col_lower or 'text' in col_lower:
         message_col = col
 
+# Initialize database
+db = TicketDatabase()
+
 print("Analyzing tickets...\n")
 
 for index, row in df.iterrows():
@@ -64,16 +68,35 @@ for index, row in df.iterrows():
 
     print(f"Ticket #{ticket_id} - {customer}")
 
+    # Store ticket in database
+    db_ticket_id = db.insert_ticket(ticket_id, customer, subject, message)
+
     try:
         analysis = analyze_ticket(ticket_text=message, customer=customer, subject=subject)
+        
+        # Store analysis in database
+        db.insert_analysis(db_ticket_id, analysis)
+        
         print(f"  Urgency:   {analysis['urgency']}")
         print(f"  Sentiment: {analysis['sentiment']}")
         print(f"  Category:  {analysis['category']}")
         print(f"  Team:      {analysis['suggested_team']}")
         print(f"  Summary:   {analysis['summary']}")
+        print("  ✓ Saved to database")
     except Exception as e:
         print(f"  Error analyzing: {e}")
 
     print()
+
+print("Done!\n")
+
+# Show stats
+print("="*50)
+print("STATISTICS")
+print("="*50)
+stats = db.get_stats()
+print(f"\nUrgency breakdown: {stats['urgency']}")
+print(f"Sentiment breakdown: {stats['sentiment']}")
+print(f"Category breakdown: {stats['category']}")
 
 print("Done!")
